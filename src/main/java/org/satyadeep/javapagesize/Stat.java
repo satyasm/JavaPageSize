@@ -21,7 +21,12 @@ public class Stat {
 
     private String trimToLength(String s, int len) {
         if (s.length() > len) {
-            return s.substring(0, len);
+            int prefix = len/2 - 2;
+            int suffix = len/2 - 1;
+            if (len%2 == 1) {
+                    prefix++; // if we have odd length, we can include an extra char in prefix
+            }
+            return s.substring(0, prefix) + "..." + s.substring(s.length() - suffix);
         }
         return s;
     }
