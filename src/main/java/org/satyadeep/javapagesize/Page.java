@@ -33,7 +33,10 @@ public class Page {
 
     public CompletableFuture<Page> resolve() {
         final long startTime = System.currentTimeMillis();
-        CompletableFuture<Page> pageF = this.base.get().thenApply(rr -> {
+        CompletableFuture<Page> pageF = this.base.get().thenApplyAsync(rr -> {
+            if (rr.resource.getError() != null) {
+                return this;
+            }
             this.size += rr.resource.getSize();
             this.loadResources(rr.response.getResponseBodyAsStream());
             return this;
@@ -72,18 +75,20 @@ public class Page {
     }
 
     public Stat getStats() {
-        Stat s = new Stat(this.base.getUrl(), this.timeTakenInMillis, this.size);
-        s.addComponent(new Stat(this.base.getUrl(), this.base.getTimeTakenInMillis(), this.base.getSize()));
-        s.addComponent(new Stat("parse", this.parseTimeInMillis, 0));
+        Stat s = new Stat(this.base.getUrl(), this.timeTakenInMillis, this.size, null);
+        s.addComponent(new Stat(this.base.getUrl(), this.base.getTimeTakenInMillis(), this.base.getSize(),
+                this.base.getError()));
+        s.addComponent(new Stat("parse", this.parseTimeInMillis, 0, null));
         for (Map<String, Resource> byType : assets.values()) {
             for (Resource r : byType.values()) {
-                s.addComponent(new Stat(r.getUrl(), r.getTimeTakenInMillis(), r.getSize()));
+                s.addComponent(new Stat(r.getUrl(), r.getTimeTakenInMillis(), r.getSize(), r.getError()));
             }
         }
         return s;
     }
+
     private void loadResources(InputStream is) {
-        final long startTime = System.currentTimeMillis(); 
+        final long startTime = System.currentTimeMillis();
         List<Resource> resources = extractAssets(this.asyncHttpClient, is, this.getUrl());
         try {
             URL baseURL = new URL(this.base.getUrl());

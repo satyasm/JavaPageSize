@@ -8,10 +8,7 @@ import org.asynchttpclient.Response;
 
 public class Resource {
     public static enum ResourceType {
-        HTML,
-        CSS,
-        IMG,
-        SCRIPT
+        HTML, CSS, IMG, SCRIPT
     }
 
     private final ResourceType resType;
@@ -19,20 +16,31 @@ public class Resource {
     private final String url;
     private int size;
     private long timeTakenInMillis;
+    private Throwable error;
 
     public Resource(AsyncHttpClient httpClient, String url, ResourceType resType) {
         this.resType = resType;
         this.asyncHttpClient = httpClient;
         this.url = url;
+        this.error = null;
     }
 
     public CompletableFuture<ResourceResponse> get() {
         final long startTime = System.currentTimeMillis();
-        return asyncHttpClient.prepareGet(url).execute().toCompletableFuture().thenApplyAsync(resp -> {
-            this.timeTakenInMillis = System.currentTimeMillis() - startTime;
-            this.size = resp.getResponseBodyAsBytes().length;
-            return new ResourceResponse(this, resp);
-        });
+        try {
+            return asyncHttpClient.prepareGet(url).setFollowRedirect(true).execute().toCompletableFuture()
+                    .thenApplyAsync(resp -> {
+                        this.timeTakenInMillis = System.currentTimeMillis() - startTime;
+                        this.size = resp.getResponseBodyAsBytes().length;
+                        return new ResourceResponse(this, resp);
+                    }).exceptionally(err -> {
+                        this.error = err;
+                        return new ResourceResponse(this, null);
+                    });
+        } catch (Exception e) {
+            this.error = e;
+            return CompletableFuture.completedFuture(new ResourceResponse(this, null));
+        }
     }
 
     public Resource normalizeURL(URL base) {
@@ -58,6 +66,10 @@ public class Resource {
 
     public ResourceType geResourceType() {
         return this.resType;
+    }
+
+    public Throwable getError() {
+        return this.error;
     }
 
     public static class ResourceResponse {
