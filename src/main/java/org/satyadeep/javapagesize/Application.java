@@ -76,7 +76,7 @@ public class Application {
 
     static void printHelpAndExit(Options options) {
         HelpFormatter formatter = new HelpFormatter();
-        formatter.printHelp("javapagesize", options);
+        formatter.printHelp("javapagesize [options] [url] ... ", options);
         System.exit(0);
     }
 }
