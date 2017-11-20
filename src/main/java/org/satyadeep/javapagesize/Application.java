@@ -10,10 +10,9 @@ import org.asynchttpclient.DefaultAsyncHttpClient;
 public class Application {
     public static void main(String[] args) throws ExecutionException, InterruptedException, IOException {
         try (final AsyncHttpClient asyncHttpClient = new DefaultAsyncHttpClient()) {
-            CompletableFuture<Page> pageF = new Page(asyncHttpClient, "https://www.yahoo.com/").resolve();
-            Page page = pageF.get();
-            System.out.printf("Page size for %s: %d\n", page.getUrl(), page.getSize());
-            System.out.printf("Total time taken: %d ms", page.getTimeTakenInMillis());
+            CompletableFuture<Stat> statF = new Page(asyncHttpClient, "https://www.yahoo.com/").resolve()
+                .thenApply(p -> p.getStats());
+            statF.get().toStdout();
         }
         System.exit(0);
     }

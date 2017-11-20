@@ -24,6 +24,7 @@ public class Page {
     final private Map<ResourceType, Map<String, Resource>> assets = new HashMap<>();
     private long size;
     private long timeTakenInMillis;
+    private long parseTimeInMillis;
 
     public Page(AsyncHttpClient asyncHttpClient, String url) {
         this.asyncHttpClient = asyncHttpClient;
@@ -33,15 +34,14 @@ public class Page {
     public CompletableFuture<Page> resolve() {
         final long startTime = System.currentTimeMillis();
         CompletableFuture<Page> pageF = this.base.get().thenApply(rr -> {
-            this.timeTakenInMillis = System.currentTimeMillis() - startTime;
             this.size += rr.resource.getSize();
             this.loadResources(rr.response.getResponseBodyAsStream());
             return this;
         });
-        return loadAssetsAsync(pageF);
+        return loadAssetsAsync(pageF, startTime);
     }
 
-    private CompletableFuture<Page> loadAssetsAsync(CompletableFuture<Page> pageF) {
+    private CompletableFuture<Page> loadAssetsAsync(CompletableFuture<Page> pageF, final long startTime) {
         return pageF.thenCompose(p -> {
             CompletableFuture<Page> result = CompletableFuture.completedFuture(p);
             for (Map<String, Resource> resByUrl : p.assets.values()) {
@@ -53,6 +53,9 @@ public class Page {
                 }
             }
             return result;
+        }).thenApply(p -> {
+            p.timeTakenInMillis = System.currentTimeMillis() - startTime;
+            return p;
         });
     }
 
@@ -68,7 +71,19 @@ public class Page {
         return this.timeTakenInMillis;
     }
 
+    public Stat getStats() {
+        Stat s = new Stat(this.base.getUrl(), this.timeTakenInMillis, this.size);
+        s.addComponent(new Stat(this.base.getUrl(), this.base.getTimeTakenInMillis(), this.base.getSize()));
+        s.addComponent(new Stat("parse", this.parseTimeInMillis, 0));
+        for (Map<String, Resource> byType : assets.values()) {
+            for (Resource r : byType.values()) {
+                s.addComponent(new Stat(r.getUrl(), r.getTimeTakenInMillis(), r.getSize()));
+            }
+        }
+        return s;
+    }
     private void loadResources(InputStream is) {
+        final long startTime = System.currentTimeMillis(); 
         List<Resource> resources = extractAssets(this.asyncHttpClient, is, this.getUrl());
         try {
             URL baseURL = new URL(this.base.getUrl());
@@ -80,6 +95,8 @@ public class Page {
             }
         } catch (MalformedURLException cause) {
             throw new RuntimeException("Not a valid URL", cause);
+        } finally {
+            this.parseTimeInMillis = System.currentTimeMillis() - startTime;
         }
     }
 
