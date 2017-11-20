@@ -1,5 +1,6 @@
 package org.satyadeep.javapagesize;
 
+import java.net.URL;
 import java.util.concurrent.CompletableFuture;
 
 import org.asynchttpclient.AsyncHttpClient;
@@ -32,6 +33,15 @@ public class Resource {
             this.size = resp.getResponseBodyAsBytes().length;
             return new ResourceResponse(this, resp);
         });
+    }
+
+    public Resource normalizeURL(URL base) {
+        if (url.startsWith("//")) {
+            return new Resource(this.asyncHttpClient, base.getProtocol() + ":" + url, this.resType);
+        } else if (url.startsWith("/")) {
+            return new Resource(this.asyncHttpClient, base.getProtocol() + "://" + base.getHost() + url, this.resType);
+        }
+        return this;
     }
 
     public String getUrl() {
