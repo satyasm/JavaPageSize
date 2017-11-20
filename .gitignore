@@ -5,3 +5,4 @@
 .vscode
 *.iml
 target
+dependency-reduced-pom.xml

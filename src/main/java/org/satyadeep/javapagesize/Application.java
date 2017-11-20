@@ -12,6 +12,7 @@ public class Application {
         try (final AsyncHttpClient asyncHttpClient = new DefaultAsyncHttpClient()) {
             CompletableFuture<Stat> statF = new Page(asyncHttpClient, "https://www.yahoo.com/").resolve()
                 .thenApply(p -> p.getStats());
+            Stat.headerToStdout();
             statF.get().toStdout();
         }
         System.exit(0);
